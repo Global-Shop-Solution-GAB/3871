@@ -1,0 +1,60 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sSql.Declare(String)
+
+F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+V.Local.sSql.Set("Selec Job, Suffix, Part, Date_Closed, Qty_Order, Parent_WO, Parent_Suffix_Parent From Job_Header where Date_Closed = '000000' and Suffix >= '500' and Parent_WO = ''")
+
+F.ODBC.Connection!conx.OpenLocalRecordsetRW("rstJobA",V.Local.sSql)
+
+F.Intrinsic.Control.DoUntil(V.ODBC.conx!rstJobA.EOF,=,True)
+	F.Intrinsic.String.Build("Select Parent_Suffix_Parent, Job, Suffix from Job_Header where Job = '{0}' and Suffix < '500' and Suffix <> '000' and Part = '{1}' and Quantity = '{2}'",V.ODBC.conx!rstJobA.FieldValTrim!Job,V.ODBC.conx!rstJobA.FieldValTrim!Part,V.ODBC.conx!rstJobA.FieldVal!Qty_Order,V.Local.sSql)
+	F.ODBC.Connection!conx.OpenLocalRecordsetRW("rstJobB",V.Local.sSql)
+	F.Intrinsic.Control.If(V.ODBC.conx!rstJobB.EOF,=,False)
+		F.ODBC.conx!rstJobB.Set!Parent_Suffix_Parent(V.ODBC.conx!rstJobA.FieldValLTrim!Suffix)
+		F.ODBC.conx!rstJobA.Set!Parent_WO(V.ODBC.conx!rstJobB.FieldValTrim!Job)
+		F.ODBC.conx!rstJobA.Set!Parent_Suffix_Parent(V.ODBC.conx!rstJobB.FieldValTrim!Suffix)
+
+
+		F.Intrinsic.String.Build("Select Parent, BOMChild From APSv3_JBMaster where Job = '{0}' and Suffix = '{1}' ",V.ODBC.conx!rstJobA.FieldValTrim!job,V.ODBC.conx!rstJobA.FieldValTrim!Sfx,V.Local.sSql)
+		F.ODBC.Connection!conx.OpenLocalRecordsetRW("rstAPS",V.Local.sSql)
+		F.Intrinsic.Control.If(V.ODBC.conx!rstAPS.EOF,=,False)
+			F.ODBC.conx!rstAPS.Set!Parent(V.ODBC.conx!rstJobB.FieldValTrim!Suffix)
+			F.ODBC.conx!rstAPS.Set!BOMChild("TRUE")
+		F.Intrinsic.Control.EndIf
+		F.ODBC.conx!rstAPS.Close
+	F.Intrinsic.Control.EndIf
+	F.ODBC.conx!rstJobB.Close
+
+F.Intrinsic.Control.Loop
+
+F.ODBC.Connection!conx.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3871_TEL_BOM.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$GCG_TEL_BOM$}$SKT$}$8/23/2015
+Program.Sub.Comments.End
+
